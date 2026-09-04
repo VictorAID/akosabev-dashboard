@@ -266,6 +266,28 @@
   .pct-fill { height: 100%; border-radius: 3px; background: var(--green); }
   .pct-fill.warn { background: var(--red); }
 
+  .live-badge {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #86efac;
+    background: rgba(22,163,74,.18);
+    border: 1px solid rgba(22,163,74,.35);
+    border-radius: 20px;
+    padding: 3px 10px;
+  }
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; } 50% { opacity: .4; }
+  }
+
   @media (max-width: 600px) {
     header { padding: 0 16px; }
     .page { padding: 16px 12px 40px; }
@@ -280,6 +302,8 @@
     <h1>AkosaBev Ghana Ltd</h1>
     <span>Sales Performance Dashboard</span>
   </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div class="live-badge" id="live-badge"><div class="live-dot"></div>Live data</div>
   <button class="refresh-btn" onclick="loadData()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
@@ -287,6 +311,7 @@
     </svg>
     Refresh Data
   </button>
+  </div>
 </header>
 
 <div class="page">
@@ -662,23 +687,28 @@ function render(rows) {
 }
 
 // ─── LOAD DATA ────────────────────────────────────────────────────────────────
-const API_URL = 'https://corsproxy.io/?https://script.google.com/macros/s/AKfycbyyFoF56rHs2b9fHSxPKSrMjhVn894kqx95qwEBtafuCRfw7kBPzAc0KNNNk96XwTrH/exec';
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz0GUSYrlOlVJk8JAalAfZP7htQiGXvKz1SF3oXYb99xcitUempH6V0KadovFQWvr-R/exec";
 
 async function loadData() {
   document.getElementById('spinner').style.display = 'flex';
   document.getElementById('content').style.display = 'none';
   document.getElementById('warn-banner').style.display = 'none';
+  document.getElementById('live-badge').style.display = 'none';
 
   try {
-    const res = await fetch(API_URL, { mode: 'cors' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    console.log("Fetching:", SCRIPT_URL);
+    const res = await fetch(SCRIPT_URL);
+    if (!res.ok) throw new Error("HTTP " + res.status);
     const json = await res.json();
-    // Accept array directly or { data: [...] } envelope
-    const rows = Array.isArray(json) ? json : (json.data || json.values || []);
-    if (!rows.length) throw new Error('Empty response');
+    const rows = Array.isArray(json) ? json
+                : Array.isArray(json.data) ? json.data
+                : null;
+    if (!rows || rows.length === 0) throw new Error("Empty or unrecognised response");
+    console.log("Live data loaded — rows:", rows.length);
+    document.getElementById('live-badge').style.display = 'flex';
     render(rows);
   } catch (e) {
-    console.warn('Live fetch failed, using sample data:', e);
+    console.warn("Fetch failed:", e.message);
     document.getElementById('warn-banner').style.display = 'block';
     render(SAMPLE);
   }
